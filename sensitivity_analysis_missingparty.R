@@ -12,8 +12,14 @@
 # Using the mice package
 library(mice)
 
-sensitivty_analysis <- function(formula, imputations, targets_list) {
+# In this sensitivity analysis we reanalyse the primary outcome, but instead of
+# assuming that missing party data reflects non-participation, we impute
+# party affiliation based on other non-missing variables
+
+sensitivty_analysis <- function() {
   source("data_cleaning.R")
+  
+  #Extract the cleaned dataset pre imputation
   ds <- clean_data()
   
   # Party
@@ -21,18 +27,21 @@ sensitivty_analysis <- function(formula, imputations, targets_list) {
   
   #Impute first and then compute weights
   ds_copy <- ds[treatment == 0]
-  ds_copy[, party2 := if_else(party2 == 11, NA, party2)]
+  ds_copy[, party2 := if_else(party2 == 11, NA, party2)] #Respondents who do not know what to vote
   ds_copy[, edu1 := if_else(edu1 == 6, NA, edu1)]
   ds_copy[, sex := if_else(sex == 4, 3, sex)]
   ds_copy <- ds_copy[, c("age", "sex", "edu1", "party2", "randomize_worst")]
+  
+  #Imputing
   imputations <- mice(
     ds_copy,
     m = 50,
-    printFlag = TRUE,
+    printFlag = F,
     maxit = 20,
     seed = 1234
   )
   
+  # Getting the population targets
   source("produce_target.R")
   targets_list <- produce_targets()
   
