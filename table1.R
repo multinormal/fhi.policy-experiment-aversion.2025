@@ -10,33 +10,44 @@
 
 
 source("weigh_data_2.R")
-ds <- raked_data_survey()
+d <- raked_data_survey()
+ds <- d[[1]]
 
 
-# In table 1 we report results from the survey analysis. We use data from
-# the control group
+# In table 1 we report results from the survey analysis. We use the survey design
+# object from the control group
+control_raked <- d[[3]]
 control <- ds[treatment ==0]
-control$unweighted <- 1
+# design_object <- svydesign(
+#   ids = ~1,
+#   data = ds,
+#   calibrate= ~1,
+#   weights = ~weight_survey_raked
+# )
 
-# Setting up the survey design
-survey_design_weight <- svydesign(
-  ids = ~1,  # No clustering assumed
-  data = control,
-  weights = ~weight_survey_raked
-)
+# control_design <- subset(design_object, treatment==0)
+# svyciprop(~randomize_worst,control_design, method= "lo")
+# fit <-svyciprop(~randomize_worst,control_raked, method= "lo")
+# sqrt(attr(fit, "var"))
+# fit2 <-svyciprop(~randomize_worst,ds_untreated_raked, method= "lo")
+# sqrt(attr(fit2, "var"))
+#test<-calibrate(control_raked, formula=~1, population=sum(weights(control_raked)))
+
 
 # Calculating the sample size
 ss <- nrow(control)
 
 # Calculating the effective sample size
-w <- weights(survey_design_weight)
+w <- weights(control_raked)
 eff_ss <- sum(w)^2 / sum(w^2)
 
 # Function to calculate row values in table 1
 fun_table_1_row <- function(var) {
   var_formula <- reformulate(var)
+  #Getting the unweighted proportion
   unweighted_prop <- round(mean(control[[var]])*100,1)
-  prop_ci <- svyciprop(var_formula,survey_design_weight, method= "lo")
+  #Getting the weighted proportion and with confidence interval
+  prop_ci <- svyciprop(var_formula,control_raked, method= "lo")
   weighted_prop <- round(as.vector(prop_ci)*100, 1)
   lower_bound <- round(as.vector(attr(prop_ci, "ci")[1])*100, 1)
   upper_bound <- round(as.vector(attr(prop_ci, "ci")[2])*100, 1)
@@ -71,6 +82,7 @@ secondary_fav_exprmnt <- fun_table_1_row("favours_exprmnt")
 #Secondary analysis: Justifiably of differential treatment
 secondary_just_diff_trt <- fun_table_1_row("just_diff_treatment_2")
 
+#Combing results in one table
 tab_primary_secondary <- rbind(primary, sensitivity, secondary_inferred, secondary_exprmnt_pref, secondary_fav_impl, secondary_fav_notimpl, secondary_fav_exprmnt, secondary_just_diff_trt)
 colnames(tab_primary_secondary) <- c("ss", "eff_ss", "unweighted_prop", "weighted_prop", "ci")
 tab <- data.frame(var = rownames(tab_primary_secondary), tab_primary_secondary)
@@ -90,10 +102,14 @@ fun_table_1_row_subgroup <- function(var, lev) {
   
   # Weighted counts and percentages
   survey_design_subgroup <- subset(
-    survey_design_weight,
-    survey_design_weight$variables[[var]] %in% lev)
+    control_raked,
+    control_raked$variables[[var]] %in% lev)
+  
+  # Calculating the effective sample size in each group
   w <- weights(survey_design_subgroup) 
   eff_ss <- sum(w)^2 / sum(w^2)
+  
+  # Calculating the weighted proportions and confidence interval
   prop_ci <- svyciprop(~randomize_worst,survey_design_subgroup, method= "lo")
   weighted_prop <- round(as.vector(prop_ci)*100, 1)
   lower_bound <- round(as.vector(attr(prop_ci, "ci")[1])*100, 1)
@@ -111,7 +127,7 @@ subgr_tab <- c("Age group", rep("", 5)) %>%
   rbind(c("Gender", rep("", 5))) %>%
   rbind(c("Female", fun_table_1_row_subgroup("sex", 1))) %>%
   rbind(c("Male", fun_table_1_row_subgroup("sex", 2))) %>%
-  #rbind(c("Do not know", fun_table_1_row_subgroup("sex", 3))) %>%
+  rbind(c("Do not know", fun_table_1_row_subgroup("sex", 3))) %>%
   rbind(c("Education level", rep("", 5))) %>% 
   rbind(c("Low", fun_table_1_row_subgroup("edu_level", 1))) %>%
   rbind(c("Middle", fun_table_1_row_subgroup("edu_level", 2)))%>%
@@ -152,7 +168,7 @@ table1 <-gt(tab) %>%
   tab_row_group(group = "Secondary analysis: Inferred experiment aversion", rows = 3) %>%
   tab_row_group(group = "Sensitivity analysis: Policy experiment aversion", rows = 2) %>%
   tab_row_group(group = "Primary analysis: Policy experiment aversion", rows = 1) %>%
-  tab_style(style = cell_text(weight = "bold"), locations = list(cells_row_groups(), cells_column_labels(), cells_column_spanners(), cells_body(rows= c(9, 15, 18, 22, 28), columns=1))) %>%
+  tab_style(style = cell_text(weight = "bold"), locations = list(cells_row_groups(), cells_column_labels(), cells_column_spanners(), cells_body(rows= c(9, 15, 19, 23, 29), columns=1))) %>%
   cols_align(align = "center",
              columns = c(ss, eff_ss, unweighted_prop, weighted_prop, ci)) %>%
   cols_align(align = "right", columns = c(var)) %>%
@@ -177,10 +193,10 @@ table1 <-gt(tab) %>%
     locations = cells_row_groups(groups=4:8))%>%
   tab_footnote(
     footnote = "Complete results for all categories available in supplementary variables",
-    locations = cells_body(rows=18, columns=1))%>%
+    locations = cells_body(rows=19, columns=1))%>%
   tab_footnote(
     footnote = "Results presented for the three parties with highest polling support as of June 2025; complete results for all parties will be available in supplementary materials.",
-    locations = cells_body(rows=22, columns=1))
+    locations = cells_body(rows=23, columns=1))
 
 gtsave(table1, "results/table1.html")
 

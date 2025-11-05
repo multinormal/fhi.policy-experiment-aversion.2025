@@ -9,13 +9,18 @@
 ################################################################################
 
 source("weigh_data_2.R")
-ds <- raked_data_survey() 
+d <- raked_data_survey()
+ds <- d[[1]]
+survey_design_intervention <- d[[2]]
+survey_design_control <- d[[3]]
+# 
 
-# Columns unweighted
+#This function summarises unweighted counts and and percentages for each value
 summarize_var_unweighted <- function(dt, var) {
   dt[, .(text = glue::glue("{.N} ({round(.N / nrow(dt) * 100, 1)})%")), by = var]
 }
 
+#This function does this for each variable and each value
 summarize_var_unweighted <- function(dt, var) {
   vals <- c()
   if(var =="sex") {
@@ -29,7 +34,7 @@ summarize_var_unweighted <- function(dt, var) {
     }
   }
   if(var =="edu1") {
-    for(i in 2:5){
+    for(i in 2:6){
       vals[i-1] <- glue::glue("{nrow(dt[edu1==i])} ({round(nrow(dt[edu1==i])/ nrow(dt) * 100, 1)}%)")
     }
   }
@@ -61,33 +66,17 @@ unweighted_col <- function(data) {
   return(unweighted_column)
 }
 
-survey_design <- svydesign(
-  ids = ~ 1, # No clustering assumed
-  data = ds,
-  weights = ~ weight_survey_raked
-)
-
-
-
-
 # Columns weighted
-weighted_col <- function(data) {
-  survey_design <- svydesign(
-    ids = ~ 1, # No clustering assumed
-    data = data,
-    weights = ~ weight_survey_raked
-  )
-  
+weighted_col <- function(survey_design) {
   w <- weights(survey_design)
   eff_n <- sum(w)^2 / sum(w^2)
   
-  summarize_n_weighted <- function(data, var) {
+  summarize_n_weighted <- function(var) {
     var_formula <- reformulate(var)
     op <- c()
     tbl <- svytable(
       var_formula,
-      design = survey_design#,
-      #Ntotal = nrow(data) / generaldesigneffect(data$weight_raked)
+      design = survey_design
     )
     for (i in 1:length(tbl)) {
       op[i] <- glue::glue(
@@ -113,11 +102,14 @@ weighted_col <- function(data) {
   )
   return(weighted_column)
 }
-weighted_col(ds[treatment==0])
 
 rownames_table2 <- read_csv("data/rownames_table2.txt")
 
-tbl <- data.table(rownames_table2, unweighted_col_c =unweighted_col(ds[treatment==0]), weighted_col_c = weighted_col(ds[treatment==0]), unweighted_col_t =unweighted_col(ds[treatment==1]), weighted_col_t = weighted_col(ds[treatment==1])) 
+tbl <- data.table(rownames_table2, 
+                  unweighted_col_c =unweighted_col(ds[treatment==0]), 
+                  weighted_col_c = weighted_col(survey_design_control), 
+                  unweighted_col_t =unweighted_col(ds[treatment==1]), 
+                  weighted_col_t = weighted_col(survey_design_intervention)) 
 table2 <- tbl %>%
   gt() %>%
   cols_label(
