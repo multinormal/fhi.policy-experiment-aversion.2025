@@ -20,7 +20,7 @@ produce_targets <- function() {
   # write.csv2(age_sex_ssb, "data/age_sex_ssb.csv", row.names = F)
   
   
-  age_sex_ssb<- as.data.table(read.csv2("data/age_sex_ssb.csv"))
+  age_sex_ssb<- as.data.table(read.csv2(here("data", "age_sex_ssb.csv")))
   
   #Making age (dataset.Alder) a numeric variable
   age_sex_ssb <- age_sex_ssb[, dataset.Alder := as.numeric(dataset.Alder)]
@@ -66,7 +66,7 @@ produce_targets <- function() {
   # write.csv2(edu_ssb[2], "data/edu_ssb.csv", row.names = F)
   
   
-  edu_ssb<- as.data.table(read.csv2("data/edu_ssb.csv"))
+  edu_ssb<- as.data.table(read.csv2(here("data", "edu_ssb.csv")))
   
   #Recoding the education level so that it matches that of the survey
   edu_ssb <- edu_ssb[, edu1 := fcase(
@@ -86,8 +86,7 @@ produce_targets <- function() {
   
   # Party
   poll_of_polls <- read.csv2(
-    "data/poll_of_polls.csv"
-  )
+    here("data", "poll_of_polls.csv"))
   
   #Selecting polling data only from month of May 2025
   poll_of_polls <- as.data.table(poll_of_polls)[X == "Mai '25"]
