@@ -8,7 +8,7 @@
 ## This script produces table 2 in http://dx.doi.org/10.2139/ssrn.5408584
 ################################################################################
 
-source("weigh_data_2.R")
+source(here("weigh_data_2.R"))
 d <- raked_data_survey()
 ds <- d[[1]]
 survey_design_intervention <- d[[2]]
@@ -103,7 +103,7 @@ weighted_col <- function(survey_design) {
   return(weighted_column)
 }
 
-rownames_table2 <- read_csv("data/rownames_table2.txt")
+rownames_table2 <- read_csv(here("data", "rownames_table2.txt"))
 
 tbl <- data.table(rownames_table2, 
                   unweighted_col_c =unweighted_col(ds[treatment==0]), 
@@ -149,4 +149,4 @@ table2 <- tbl %>%
     footnote = "Weighted percentages, using post-stratification weights to match the sample with the population of people residing in Norway.",
     locations = cells_column_labels(columns = c("weighted_col_t", "weighted_col_c"))
   )
-gtsave(table2, "results/table2.html")
+gtsave(table2, here("results", "table2.html"))

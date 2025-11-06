@@ -9,7 +9,7 @@
 ################################################################################
 
 
-source("weigh_data_2.R")
+source(here("weigh_data_2.R"))
 d <- raked_data_survey()
 ds <- d[[1]]
 
@@ -198,7 +198,7 @@ table1 <-gt(tab) %>%
     footnote = "Results presented for the three parties with highest polling support as of June 2025; complete results for all parties will be available in supplementary materials.",
     locations = cells_body(rows=23, columns=1))
 
-gtsave(table1, "results/table1.html")
+gtsave(table1, here("results", "table1.html"))
 
 
 

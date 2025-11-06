@@ -1,12 +1,12 @@
 
 clean_data <- function() {
   ds1 <- readxl::read_excel(
-    "data/data1.xlsx"
+    here("data", "data1.xlsx")
   )
   ds1 <- janitor::clean_names(ds1)
   
   ds2 <- readxl::read_excel(
-    "data/data2.xlsx")
+    here("data", "data2.xlsx"))
   
   ds2 <- janitor::clean_names(ds2)
   names(ds1) <- c(

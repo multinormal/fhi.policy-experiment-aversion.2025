@@ -17,7 +17,7 @@ library(mice)
 # party affiliation based on other non-missing variables
 
 sensitivty_analysis <- function() {
-  source("data_cleaning.R")
+  source(here("data_cleaning.R"))
   
   #Extract the cleaned dataset pre imputation
   ds <- clean_data()
@@ -42,7 +42,7 @@ sensitivty_analysis <- function() {
   )
   
   # Getting the population targets
-  source("produce_target.R")
+  source(here("produce_target.R"))
   targets_list <- produce_targets()
   
   #Looping through all imputations

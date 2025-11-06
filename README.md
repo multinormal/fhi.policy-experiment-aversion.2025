@@ -6,8 +6,8 @@ The analysis was prespecified in http://dx.doi.org/10.2139/ssrn.5408584
 
 ## Explanation R-scrips
 
-### start_here.R
-Installs the neccessary packages
+### run_analysis.R
+Installs the neccessary packages and runs the analysis
 
 ### data_cleaning.R
 Cleans datasets
@@ -29,3 +29,4 @@ Produces table 3 as prespecified in http://dx.doi.org/10.2139/ssrn.5408584
 
 
 ### sensitivity_analysis_missingparty.R
+Produces sensitivity analysis in table 1.

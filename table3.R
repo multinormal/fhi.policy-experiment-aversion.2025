@@ -9,7 +9,7 @@
 ################################################################################
 
 
-source("weigh_data_2.R")
+source(here("weigh_data_2.R"))
 d <- raked_data_survey()
 ds <- d[[1]]
 survey_design_intervention <- d[[2]]
@@ -24,37 +24,7 @@ survey_design <- svydesign(
 )
 
 
-################# Primary outcome
-
-model_rr <- svyglm(randomize_worst~treatment, design=survey_design, 
-                                family=quasibinomial(link="log")) 
-results_rr <- broom::tidy(model_rr, conf.int = TRUE, exponentiate = T)
-
-model_rd <- svyglm(randomize_worst~treatment, design=survey_design, 
-                   family=quasibinomial(link="identity")) 
-results_rd <- broom::tidy(model_rd, conf.int = TRUE)
-p_values <- if(results_rr$p.value[results_rr$term == 'treatment']>=0.001) {
-  round(results_rr$p.value[results_rr$term == 'treatment'], 3)
-} else{
-  "<0.001"
-}
-
-source("weigh_data_2.R")
-d <- raked_data_survey()
-ds <- d[[1]]
-survey_design_intervention <- d[[2]]
-survey_design_control <- d[[3]]
-
-ds$one <- 1
-
-survey_design <- svydesign(
-  ids = ~ 1, # No clustering assumed
-  data = ds,
-  weights = ~ weight_survey_raked
-)
-
-
-
+############### Analysis of primary and secondary outcomes #####################
 
 #Helper functions
 
@@ -151,7 +121,7 @@ secondary2_outcome <- analyze_outcome(
   ds = ds
 )
 
-
+########################## Subgroup analysis ###################################
 
 #Function to calculate risk difference and risk ratios for subgroups
 
@@ -298,23 +268,42 @@ counts_deff_subgroup <- function(var, gr) {
     )
   )
 }
-
+# Function to format subgroup table
 make_subgroup_tbl <- function(var) {
-
-res_treated <- counts_deff_subgroup(var, 1)
-res_untreated <- counts_deff_subgroup(var, 0)
-res_regression <- subgroup_rr_rd(var)
-
-
-unweighted_control <- glue::glue("{res_untreated$unweighted_count} ({round(res_untreated$percent_unweighted,1)}%)")
-unweighted_intervention <- glue::glue("{res_treated$unweighted_count} ({round(res_treated$percent_unweighted,1)}%)")
-weighted_control <- glue::glue("{round(res_untreated$effective_n ,0)} ({round(res_untreated$percent_weighted,1)}%)")
-weighted_intervention <- glue::glue("{round(res_treated$effective_n ,0)} ({round(res_treated$percent_weighted,1)}%)")
-rd <- glue::glue("{round(res_regression$rd, 2)} [{round(res_regression$rd_low ,2)} to {round(res_regression$rd_high ,2)}]")
-rr <- glue::glue("{round(res_regression$rr, 2)} [{round(res_regression$rr_low ,2)} to {round(res_regression$rr_high ,2)}]")
-return(tibble(unweighted_control, weighted_control, unweighted_intervention, weighted_intervention, rd, rr))
+  res_treated <- counts_deff_subgroup(var, 1)
+  res_untreated <- counts_deff_subgroup(var, 0)
+  res_regression <- subgroup_rr_rd(var)
+  
+  
+  unweighted_control <- glue::glue(
+    "{res_untreated$unweighted_count} ({round(res_untreated$percent_unweighted,1)}%)"
+  )
+  unweighted_intervention <- glue::glue("{res_treated$unweighted_count} ({round(res_treated$percent_unweighted,1)}%)")
+  weighted_control <- glue::glue(
+    "{round(res_untreated$effective_n ,0)} ({round(res_untreated$percent_weighted,1)}%)"
+  )
+  weighted_intervention <- glue::glue("{round(res_treated$effective_n ,0)} ({round(res_treated$percent_weighted,1)}%)")
+  rd <- glue::glue(
+    "{round(res_regression$rd, 2)} [{round(res_regression$rd_low ,2)} to {round(res_regression$rd_high ,2)}]"
+  )
+  rr <- glue::glue(
+    "{round(res_regression$rr, 2)} [{round(res_regression$rr_low ,2)} to {round(res_regression$rr_high ,2)}]"
+  )
+  return(
+    tibble(
+      unweighted_control,
+      weighted_control,
+      unweighted_intervention,
+      weighted_intervention,
+      rd,
+      rr
+    )
+  )
 }
-rownames_table3 <- read_csv("data/rownames_table3.txt")
+
+###################### Merging and formating table 3  ##########################
+
+rownames_table3 <- read_csv(here("data", "rownames_table3.txt"))
 tbl_subgr <- make_subgroup_tbl("age") %>%
   rbind(make_subgroup_tbl("sex"))%>%
   rbind(make_subgroup_tbl("edu_level")) %>%
@@ -323,18 +312,17 @@ tbl_subgr <- make_subgroup_tbl("age") %>%
 
 p_vals <- tibble(p_values = c(all_interactions("age"), rep("", 4), all_interactions("sex"), rep("", 2), all_interactions("edu_level"), rep("", 2), all_interactions("party1"), rep("", 4), all_interactions("hort"), rep("", 2)))
 
-tbl3 <- cbind(rownames_table3, tbl_subgr, p_vals)
+subgroup_part <- cbind(rownames_table3, tbl_subgr, p_vals)
 tbl3 <- primary_outcome %>%
   rbind(secondary_outcome) %>%
   rbind(secondary2_outcome) %>%
   rbind(tibble(Gr = "", unweighted_control = "", weighted_control = "", unweighted_intervention = "",weighted_intervention = "", rd = "", rr = "", p_values = "p-value for interaction")) %>%
-  rbind(tbl3)
+  rbind(subgroup_part)
   
 table3 <-tbl3%>%
   gt() %>%
   cols_label(
     Gr = "",
-    # Remove "Gr" label
     unweighted_control  = "Unweighted",
     weighted_control  = "Weighted",
     unweighted_intervention   = "Unweighted",
@@ -347,10 +335,6 @@ table3 <-tbl3%>%
               columns = c(unweighted_control, weighted_control)) %>%
   tab_spanner(label = "Intervention Participants \n (Explanatory text)",
               columns = c(unweighted_intervention, weighted_intervention)) %>%
-  # tab_spanner(label = "Non-swifties",
-  #             columns = c(unweighted_control, weighted_control)) %>%
-  # tab_spanner(label = "Swifties",
-  #             columns = c(unweighted_intervention, weighted_intervention)) %>%
   tab_row_group(group = "Had heard about the proposal", rows = 21:23) %>%
   tab_row_group(group = "Voting intention", rows = 16:20) %>%
   tab_row_group(group = "Education level", rows =13:15) %>%
@@ -389,7 +373,7 @@ table3 <-tbl3%>%
   tab_footnote(
     footnote = "Two-sided tests of interaction terms in weighted generalized linear models, testing the null hypothesis of equality of treatment effects across subgroup levels. All estimates are presented with two-sided Wald-type 95% confidence intervals",
     locations = cells_body(rows=4, columns=8))
-table3
 
-gtsave(table3, "results/table3.html")
+
+gtsave(table3, here("results", "table3.html"))
 
