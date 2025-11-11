@@ -4,8 +4,6 @@
 ## experiment on the effectiveness of an in-work tax credit
 ##
 ## Script written by Ingeborg Hess Elgersma
-##
-## This script produces table 2 in http://dx.doi.org/10.2139/ssrn.5408584
 ################################################################################
 
 #Installing relevant packages
