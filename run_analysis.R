@@ -31,6 +31,8 @@ install_and_load <- function(pkg) {
 invisible(lapply(names(packages), install_and_load))
 rm(packages)
 
+# Suppress col type messages from read_csv2.
+options(readr.show_col_types = FALSE)
 
 ######################## Analysis ############################################
 
