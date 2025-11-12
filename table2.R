@@ -92,12 +92,12 @@ weighted_col <- function(survey_design) {
   
   weighted_column <- c(
     round(eff_n, 0),
-    summarize_n_weighted(data, "age"),
-    summarize_n_weighted(data, "sex"),
-    summarize_n_weighted(data, "edu1"),
+    summarize_n_weighted("age"),
+    summarize_n_weighted("sex"),
+    summarize_n_weighted("edu1"),
     "-",
-    summarize_n_weighted(data, "party1"),
-    summarize_n_weighted(data, "heard_about")
+    summarize_n_weighted("party1"),
+    summarize_n_weighted("heard_about")
     
   )
   return(weighted_column)
