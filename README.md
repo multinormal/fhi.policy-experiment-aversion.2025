@@ -6,6 +6,8 @@ The analysis was prespecified in http://dx.doi.org/10.2139/ssrn.5408584
 
 ## How to run the analysis
 
+The analysis was developed using R version 4.4.0.
+
 1. Check out this repository to you local machine.
 2. Install the `remotes` package (version 2.5.0).
 3. Change the R working directory to that containing the repository.
