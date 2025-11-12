@@ -18,21 +18,6 @@ ds <- d[[1]]
 # object from the control group
 control_raked <- d[[3]]
 control <- ds[treatment ==0]
-# design_object <- svydesign(
-#   ids = ~1,
-#   data = ds,
-#   calibrate= ~1,
-#   weights = ~weight_survey_raked
-# )
-
-# control_design <- subset(design_object, treatment==0)
-# svyciprop(~randomize_worst,control_design, method= "lo")
-# fit <-svyciprop(~randomize_worst,control_raked, method= "lo")
-# sqrt(attr(fit, "var"))
-# fit2 <-svyciprop(~randomize_worst,ds_untreated_raked, method= "lo")
-# sqrt(attr(fit2, "var"))
-#test<-calibrate(control_raked, formula=~1, population=sum(weights(control_raked)))
-
 
 # Calculating the sample size
 ss <- nrow(control)
