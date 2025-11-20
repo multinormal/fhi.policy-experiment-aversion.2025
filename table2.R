@@ -58,7 +58,6 @@ unweighted_col <- function(data) {
     summarize_var_unweighted(data, "age"),
     summarize_var_unweighted(data, "sex"),
     summarize_var_unweighted(data, "edu1"),
-    "-",
     summarize_var_unweighted(data, "party1"),
     summarize_var_unweighted(data, "heard_about")
     
@@ -80,11 +79,8 @@ weighted_col <- function(survey_design) {
     )
     for (i in 1:length(tbl)) {
       op[i] <- glue::glue(
-       "{round(tbl[i] / (nrow(data)) * 100, 1)}%"
+       "{round((tbl[i] / (sum(tbl)))*eff_n, 0)} ({round(tbl[i] / (sum(tbl)) * 100, 1)}%)"
       )
-      # op[i] <- glue::glue(
-      #  "{round(tbl[i],0)} ({round(tbl[i] / (nrow(data) / generaldesigneffect(data$weight_raked)) * 100, 1)}%)"
-      # )
     }
     return(op)
   }
@@ -95,7 +91,6 @@ weighted_col <- function(survey_design) {
     summarize_n_weighted("age"),
     summarize_n_weighted("sex"),
     summarize_n_weighted("edu1"),
-    "-",
     summarize_n_weighted("party1"),
     summarize_n_weighted("heard_about")
     
