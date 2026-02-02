@@ -289,4 +289,4 @@ tableS2 <-tblS2%>%
     locations = cells_body(rows=4, columns=6))
 
 
-gtsave(table3, here("results", "tableS2.html"))
+gtsave(tableS2, here("results", "tableS2.html"))

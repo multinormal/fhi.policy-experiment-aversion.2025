@@ -62,4 +62,4 @@ tableS1 <-gt(as.data.frame(subgr_add)) %>%
     footnote = "Estimates matched to the population of people residing in Norway",
     locations = cells_column_labels(columns = c("weighted_prop")))
 
-gtsave(table1, here("results", "tableS1.html"))
+gtsave(tableS1, here("results", "tableS1.html"))
