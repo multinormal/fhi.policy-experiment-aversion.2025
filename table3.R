@@ -10,7 +10,7 @@
 
 
 source(here("weigh_data_2.R"))
-d <- raked_data_survey()
+d <- raked_data_survey(trimweights=trim)
 ds <- d[[1]]
 survey_design_intervention <- d[[2]]
 survey_design_control <- d[[3]]
@@ -375,5 +375,11 @@ table3 <-tbl3%>%
     locations = cells_body(rows=4, columns=8))
 
 
-gtsave(table3, here("results", "table3.html"))
+
+if (trim ==F) {
+  gtsave(table3, here("results", "table1.html"))
+} else {
+  gtsave(table3, here("results", "tableS3B.html"))
+}
+
 

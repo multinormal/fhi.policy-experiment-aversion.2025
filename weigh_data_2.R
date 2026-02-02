@@ -1,5 +1,5 @@
 
-raked_data_survey <- function(trimweights=F) {
+raked_data_survey <- function(trimweights) {
   library(survey)
   library(data.table)
   library(tidyverse)
@@ -82,6 +82,7 @@ raked_data_survey <- function(trimweights=F) {
                                        upper=quantile(ds_treated$weight_survey_raked, c(.95)),
                                        strict=TRUE)
     ds_treated$weight_survey_raked <- weights(ds_treated_raked.trim)
+    ds_treated_raked <- ds_treated_raked.trim
   }
   
   #Now repeating the procedure for the control group
@@ -138,6 +139,8 @@ raked_data_survey <- function(trimweights=F) {
                                          upper=quantile(ds_untreated$weight_survey_raked, c(.95)),
                                          strict=TRUE)
     ds_untreated$weight_survey_raked <- weights(ds_untreated_raked.trim)
+    
+    ds_untreated_raked <- ds_untreated_raked.trim
   }
   
 
