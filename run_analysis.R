@@ -34,23 +34,38 @@ rm(packages)
 # Suppress col type messages from read_csv2.
 options(readr.show_col_types = FALSE)
 
-######################## Analysis ############################################
+# Create results directory if it does not exist
+if (!dir.exists(here("results"))) {
+  dir.create(here("results"))
+}
+
+######################## Main analysis (no weight trimming) ####################
+
+# `trim` controls weight trimming in table1.R / table3.R. Set FALSE for the
+# main analysis; a second pass with trim=TRUE below produces the sensitivity
+# analysis (Tables S3A/S3B).
+trim <- FALSE
 
 # Table 1
-
 source(here("table1.R"))
 
 # Table 2
-
 source(here("table2.R"))
 
-
 # Table 3
+source(here("table3.R"))
+######################## Sensitivity analysis #################
 
+# Supplementary Table S2 (full education / voting-intention breakdown)
+source(here("tableS2.R"))
+
+# Supplementary Table S3 (sample average treatment effect, SATE)
+source(here("tableS3.R"))
+
+# Re-run Tables 1 and 3 with trimmed calibration weights (5th/95th percentile)
+# to produce Tables S4 and S5.
+trim <- TRUE
+source(here("table1.R"))
 source(here("table3.R"))
 
-
-
 #Results found in results folder
-
-

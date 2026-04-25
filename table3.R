@@ -128,18 +128,40 @@ secondary2_outcome <- analyze_outcome(
 subgroup_rr_rd <- function(var) {
   subgr <- rd <- rd_low <- rd_high <- rr <- rr_low <- rr_high <- NULL
   values <- sort(unique(ds[[var]]))
-  
+  if(var == "edu_level") {
+    values <- 1:3
+  }
   for (value in values) {
     subset_design <- subset(survey_design, survey_design$variables[[var]] == value)
     
-    # RR model
-    model_rr <- svyglm(randomize_worst ~ treatment,
-                       design = subset_design,
-                       family = quasibinomial(link = "log"))
-    results_rr <- broom::tidy(model_rr, conf.int = TRUE, exponentiate = TRUE)
-    rr <- c(rr, results_rr$estimate[results_rr$term == "treatment"])
-    rr_low <- c(rr_low, results_rr$conf.low[results_rr$term == "treatment"])
-    rr_high <- c(rr_high, results_rr$conf.high[results_rr$term == "treatment"])
+    # Detect zero-cell subgroups for the RR model
+    sub_data <- subset_design$variables
+    n_events_control <- sum(sub_data$randomize_worst[sub_data$treatment == 0], na.rm = TRUE)
+    n_events_intervention <- sum(sub_data$randomize_worst[sub_data$treatment == 1], na.rm = TRUE)
+    rr_estimable <- n_events_control > 0 && n_events_intervention > 0
+    
+    # RR model (wrapped in try(): subgroups with 0 events in one arm cause
+    # the log-binomial GLM to fail to converge or return non-finite estimates)
+    if (rr_estimable) {
+      model_rr <- try(svyglm(randomize_worst ~ treatment,
+                             design = subset_design,
+                             family = quasibinomial(link = "log")), silent = TRUE)
+      if (!inherits(model_rr, "try-error")) {
+        results_rr <- try(broom::tidy(model_rr, conf.int = TRUE, exponentiate = TRUE),
+                          silent = TRUE)
+        if (!inherits(results_rr, "try-error")) {
+          rr <- c(rr, results_rr$estimate[results_rr$term == "treatment"])
+          rr_low <- c(rr_low, results_rr$conf.low[results_rr$term == "treatment"])
+          rr_high <- c(rr_high, results_rr$conf.high[results_rr$term == "treatment"])
+        } else {
+          rr <- c(rr, NA); rr_low <- c(rr_low, NA); rr_high <- c(rr_high, NA)
+        }
+      } else {
+        rr <- c(rr, NA); rr_low <- c(rr_low, NA); rr_high <- c(rr_high, NA)
+      }
+    } else {
+      rr <- c(rr, NA); rr_low <- c(rr_low, NA); rr_high <- c(rr_high, NA)
+    }
     
     # RD model
     model_rd <- try(svyglm(randomize_worst ~ treatment,
@@ -162,28 +184,35 @@ subgroup_rr_rd <- function(var) {
 
 #Function to calculate p-value for interactions
 all_interactions <- function(var) {
+  if(var=="edu_level") {
+    survey_design <- subset(survey_design,
+                            survey_design$variables[["edu_level"]] != 4)
+  }
   
   interaction_formula <- as.formula(paste("randomize_worst ~ treatment *", var))
   main_formula <- as.formula(paste("randomize_worst ~ treatment +", var))
-                                   
+  
   model_interaction <- svyglm(interaction_formula, design=survey_design, 
-                            family=quasibinomial(link="log")) 
+                              family=quasibinomial(link="log")) 
   model_main <- svyglm(main_formula, design=survey_design, 
-                        family=quasibinomial(link="log")) 
+                       family=quasibinomial(link="log")) 
   results_interaction <- anova(model_main, model_interaction)
   if (as.vector(results_interaction$p)>=0.001) {
     printable <- round(as.vector(results_interaction$p), 3)
   } else {
     printable <- "<0.001"
   }
-   
+  
   return(printable) 
-  }
+}
 
 
 #Function to calculate weighted and unweighted counts
 counts_deff_subgroup <- function(var, gr) {
   values <- sort(unique(survey_design$variables[[var]]))
+  if(var == "edu_level"){
+    values <- 1:3
+  }
   
   subgroup <- unweighted_count <- percent_unweighted <- weighted_count <- effective_n <- percent_weighted <- c()
   
@@ -283,11 +312,18 @@ make_subgroup_tbl <- function(var) {
     "{round(res_untreated$effective_n ,0)} ({round(res_untreated$percent_weighted,1)}%)"
   )
   weighted_intervention <- glue::glue("{round(res_treated$effective_n ,0)} ({round(res_treated$percent_weighted,1)}%)")
-  rd <- glue::glue(
-    "{round(res_regression$rd, 2)} [{round(res_regression$rd_low ,2)} to {round(res_regression$rd_high ,2)}]"
+  
+  # Display '-' for subgroups where the model could not be fit (e.g. 0 events
+  # in one arm.
+  rd <- ifelse(
+    is.na(res_regression$rd),
+    "-",
+    glue::glue("{round(res_regression$rd, 2)} [{round(res_regression$rd_low ,2)} to {round(res_regression$rd_high ,2)}]")
   )
-  rr <- glue::glue(
-    "{round(res_regression$rr, 2)} [{round(res_regression$rr_low ,2)} to {round(res_regression$rr_high ,2)}]"
+  rr <- ifelse(
+    is.na(res_regression$rr),
+    "-",
+    glue::glue("{round(res_regression$rr, 2)} [{round(res_regression$rr_low ,2)} to {round(res_regression$rr_high ,2)}]")
   )
   return(
     tibble(
@@ -318,15 +354,15 @@ tbl3 <- primary_outcome %>%
   rbind(secondary2_outcome) %>%
   rbind(tibble(Gr = "", unweighted_control = "", weighted_control = "", unweighted_intervention = "",weighted_intervention = "", rd = "", rr = "", p_values = "p-value for interaction")) %>%
   rbind(subgroup_part)
-  
+
 table3 <-tbl3%>%
   gt() %>%
   cols_label(
     Gr = "",
-    unweighted_control  = "Unweighted",
-    weighted_control  = "Weighted",
-    unweighted_intervention   = "Unweighted",
-    weighted_intervention  = "Weighted",
+    unweighted_control  = "Uncalibrated",
+    weighted_control  = "Calibrated",
+    unweighted_intervention   = "Uncalibrated",
+    weighted_intervention  = "Calibrated",
     rd = "Risk difference",
     rr = "Risk ratio",
     p_values = "p-value"
@@ -351,11 +387,11 @@ table3 <-tbl3%>%
              columns = c(unweighted_control, weighted_control, unweighted_intervention, weighted_intervention, rr, rd, p_values)) %>%
   cols_align(align = "right", columns = c(Gr))%>%
   tab_footnote(
-    footnote = "Unweighted counts and percentages of participants in each arm. These reflect the sample as recruited and are not adjusted to match the population of people residing in Norway",
+    footnote = "Uncalibrated counts and percentages of participants in each arm. These reflect the sample as recruited and are not adjusted to match the population of people residing in Norway.",
     locations = cells_column_labels(columns = c("unweighted_control", "unweighted_intervention"))
   )%>%
   tab_footnote(
-    footnote = "Weighted percentages, using post-stratification weights to match the sample with the population of people residing in Norway.",
+    footnote = "Calibrated percentages, using post-stratification weights to match the sample with the population of people residing in Norway. Calibrated counts reflect design effects from calibration, using Kish's effective sample size formula and are rounded to the nearest integer.",
     locations = cells_column_labels(columns = c("weighted_control", "weighted_intervention"))
   )%>%
   tab_footnote(
@@ -365,6 +401,10 @@ table3 <-tbl3%>%
   tab_footnote(
     footnote = "Population average treatment effects (PATEs) estimated using weighted, unadjusted generalized linear models (binomial family, log link).",
     locations = cells_column_labels(columns = c("rr"))
+  )%>%
+  tab_footnote(
+    footnote = "'-' indicates that the risk ratio is not estimable. This occurs in zero-cell subgroups (no experiment-averse participants in one arm), where the log-binomial GLM produces a degenerate estimate of exp(-Inf) = 0 with a CI that collapses to [0, 0]. Risk differences remain identifiable in this situation and are reported when the identity-link model converges.",
+    locations = cells_column_labels(columns = c("rd", "rr"))
   )%>%
   tab_footnote(
     footnote = "Two sided tests of the null hypothesis of no treatment effect.",
@@ -377,9 +417,7 @@ table3 <-tbl3%>%
 
 
 if (trim ==F) {
-  gtsave(table3, here("results", "table1.html"))
+  gtsave(table3, here("results", "table3.html"))
 } else {
-  gtsave(table3, here("results", "tableS3B.html"))
+  gtsave(table3, here("results", "tableS35.html"))
 }
-
-

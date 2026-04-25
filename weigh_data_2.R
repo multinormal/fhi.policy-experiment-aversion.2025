@@ -17,8 +17,8 @@ raked_data_survey <- function(trimweights) {
   edu1 <- targets_list[["edu_target"]]
   party2 <- targets_list[["polls_target"]]
   
-  # Setting edu1 value 6 to NA
-  #ds[, edu1 := if_else(edu1 == 6, NA, edu1)]
+  #Setting edu1 value 6 to edu_level 4
+  ds[, edu_level := if_else(is.na(edu_level), 4, edu_level)]
   
   # Grouping the lowest education categories into one category as there are two
   # Few observations in the lowest education group
