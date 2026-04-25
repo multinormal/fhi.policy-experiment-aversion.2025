@@ -5,12 +5,12 @@
 ##
 ## Script written by Ingeborg Hess Elgersma
 ##
-## This script produces results as in supplementary table S2 for
+## This script produces results as in supplementary table S3 for
 ## calculating the sample average treatment effect (SATE) http://dx.doi.org/10.2139/ssrn.5408584
 ################################################################################
 
 source(here("weigh_data_2.R"))
-d <- raked_data_survey()
+d <- raked_data_survey(trimweights=trim)
 ds <- d[[1]]
 
 ############### Analysis of primary and secondary outcomes #####################
@@ -50,7 +50,7 @@ analyze_outcome <- function(outcome_var, outcome_label, data) {
   p_values <- ifelse(rr_treatment$p.value >= 0.001, 
                      round(rr_treatment$p.value, 3), 
                      "<0.001")
-
+  
   
   # Build result table
   tibble(
@@ -69,7 +69,7 @@ analyze_outcome <- function(outcome_var, outcome_label, data) {
   )
 }
 
-# Row 1-3 in table S2
+# Row 1-3 in table S3
 primary_outcome <- analyze_outcome(
   outcome_var = "randomize_worst",
   outcome_label = "Policy experiment aversion",
@@ -94,7 +94,9 @@ secondary2_outcome <- analyze_outcome(
 
 #Function to calculate p-value for interactions
 all_interactions <- function(var) {
-  
+  if(var == "edu_level"){
+    ds <- ds[edu_level!=4]
+  }
   interaction_formula <- as.formula(paste("randomize_worst ~ treatment *", var))
   main_formula <- as.formula(paste("randomize_worst ~ treatment +", var))
   
@@ -117,21 +119,37 @@ all_interactions <- function(var) {
 subgroup_rr_rd <- function(var) {
   subgr <- rd <- rd_low <- rd_high <- rr <- rr_low <- rr_high <- NULL
   values <- sort(unique(ds[[var]]))
-  
+  if(var == "edu_level"){
+    values <- 1:3
+  }
   for (value in values) {
     subset_data <- subset(ds, ds[[var]] == value)
     
-    # RR model
-    model_rr <- try(glm(randomize_worst ~ treatment,
-                    data = subset_data,
-                    family = binomial(link = "log")), silent = TRUE)
-    results_rr <- try(broom::tidy(model_rr, conf.int = TRUE, exponentiate = TRUE), silent = TRUE)
+    # Detect zero-cell subgroups for the RR model. The log-binomial GLM does not
+    # always error when one arm has 0 events: it can converge to a degenerate
+    # solution where the fitted RR is exp(-Inf) = 0, with a CI that also collapses
+    # to [0, 0]. That estimate is not statistically meaningful, so we flag the
+    # subgroup as non-estimable for RR up front. (RD remains valid in this case
+    # and is left to the GLM below.)
+    n_events_control <- sum(subset_data$randomize_worst[subset_data$treatment == 0], na.rm = TRUE)
+    n_events_intervention <- sum(subset_data$randomize_worst[subset_data$treatment == 1], na.rm = TRUE)
+    rr_estimable <- n_events_control > 0 && n_events_intervention > 0
     
-    if (!inherits(model_rr, "try-error")&!inherits(results_rr, "try-error")) {
-      #results_rr <- broom::tidy(model_rr, conf.int = TRUE, exponentiate = TRUE)
-      rr <- c(rr, results_rr$estimate[results_rr$term == "treatment"])
-      rr_low <- c(rr_low, results_rr$conf.low[results_rr$term == "treatment"])
-      rr_high <- c(rr_high, results_rr$conf.high[results_rr$term == "treatment"])
+    # RR model
+    if (rr_estimable) {
+      model_rr <- try(glm(randomize_worst ~ treatment,
+                          data = subset_data,
+                          family = binomial(link = "log")), silent = TRUE)
+      results_rr <- try(broom::tidy(model_rr, conf.int = TRUE, exponentiate = TRUE), silent = TRUE)
+      
+      if (!inherits(model_rr, "try-error")&!inherits(results_rr, "try-error")) {
+        #results_rr <- broom::tidy(model_rr, conf.int = TRUE, exponentiate = TRUE)
+        rr <- c(rr, results_rr$estimate[results_rr$term == "treatment"])
+        rr_low <- c(rr_low, results_rr$conf.low[results_rr$term == "treatment"])
+        rr_high <- c(rr_high, results_rr$conf.high[results_rr$term == "treatment"])
+      } else {
+        rr <- c(rr, NA); rr_low <- c(rr_low, NA); rr_high <- c(rr_high, NA)
+      }
     } else {
       rr <- c(rr, NA); rr_low <- c(rr_low, NA); rr_high <- c(rr_high, NA)
     }
@@ -183,20 +201,22 @@ subgroup_rr_rd <- function(var) {
 #Function to calculate weighted and unweighted counts
 counts_deff_subgroup <- function(var, gr) {
   values <- sort(unique(ds[[var]]))
-  
+  if(var == "edu_level"){
+    values <- 1:3
+  }
   subgroup <- unweighted_count <- percent_unweighted <- c()
   
   for (value in values) {
     
-      # Unweighted
-      dat <- ds[treatment == gr & randomize_worst == 1]
-      n <- sum(dat[[var]] == value)
-      N <- sum(ds[treatment == gr][[var]] == value)
-      perc <- ifelse(N == 0, 0, n / N * 100)
-      
-      unweighted_count <- c(unweighted_count, n)
-      percent_unweighted <- c(percent_unweighted, perc)
-      
+    # Unweighted
+    dat <- ds[treatment == gr & randomize_worst == 1]
+    n <- sum(dat[[var]] == value)
+    N <- sum(ds[treatment == gr][[var]] == value)
+    perc <- ifelse(N == 0, 0, n / N * 100)
+    
+    unweighted_count <- c(unweighted_count, n)
+    percent_unweighted <- c(percent_unweighted, perc)
+    
     
     subgroup <- c(subgroup, value)
   }
@@ -219,11 +239,19 @@ make_subgroup_tbl <- function(var) {
     "{res_untreated$unweighted_count} ({round(res_untreated$percent_unweighted,1)}%)"
   )
   unweighted_intervention <- glue::glue("{res_treated$unweighted_count} ({round(res_treated$percent_unweighted,1)}%)")
-  rd <- glue::glue(
-    "{round(res_regression$rd, 2)} [{round(res_regression$rd_low ,2)} to {round(res_regression$rd_high ,2)}]"
+  
+  # Display '-' for subgroups where the model could not be fit (e.g. 0 events
+  # in one arm). This matches the manuscript, which shows '-' rather than
+  # 'NA [NA to NA]' in such cells.
+  rd <- ifelse(
+    is.na(res_regression$rd),
+    "-",
+    glue::glue("{round(res_regression$rd, 2)} [{round(res_regression$rd_low ,2)} to {round(res_regression$rd_high ,2)}]")
   )
-  rr <- glue::glue(
-    "{round(res_regression$rr, 2)} [{round(res_regression$rr_low ,2)} to {round(res_regression$rr_high ,2)}]"
+  rr <- ifelse(
+    is.na(res_regression$rr),
+    "-",
+    glue::glue("{round(res_regression$rr, 2)} [{round(res_regression$rr_low ,2)} to {round(res_regression$rr_high ,2)}]")
   )
   return(
     tibble(
@@ -236,9 +264,9 @@ make_subgroup_tbl <- function(var) {
 }
 
 
-###################### Merging and formating table S2  ##########################
+###################### Merging and formating table S3  ##########################
 
-rownames_tableS2 <- read_csv(here("data", "rownames_table3.txt"))
+rownames_tableS3 <- read_csv(here("data", "rownames_table3.txt"))
 tbl_subgr <- make_subgroup_tbl("age") %>%
   rbind(make_subgroup_tbl("sex"))%>%
   rbind(make_subgroup_tbl("edu_level")) %>%
@@ -246,14 +274,14 @@ tbl_subgr <- make_subgroup_tbl("age") %>%
   rbind(make_subgroup_tbl("hort"))
 p_vals <- tibble(p_values = c(all_interactions("age"), rep("", 4), all_interactions("sex"), rep("", 2), all_interactions("edu_level"), rep("", 2), all_interactions("party1"), rep("", 4), all_interactions("hort"), rep("", 2)))
 
-subgroup_part <- cbind(rownames_tableS2, tbl_subgr, p_vals)
-tblS2 <- primary_outcome %>%
+subgroup_part <- cbind(rownames_tableS3, tbl_subgr, p_vals)
+tblS3 <- primary_outcome %>%
   rbind(secondary_outcome) %>%
   rbind(secondary2_outcome) %>%
   rbind(tibble(Gr = "", unweighted_control = "", unweighted_intervention = "", rd = "", rr = "", p_values = "p-value for interaction")) %>%
   rbind(subgroup_part)
 
-tableS2 <-tblS2%>%
+tableS3 <-tblS3%>%
   gt() %>%
   cols_label(
     Gr = "",
@@ -285,8 +313,12 @@ tableS2 <-tblS2%>%
     locations = cells_column_labels(columns = c("p_values"))
   ) %>%
   tab_footnote(
+    footnote = "'-' indicates that the risk ratio is not estimable. This occurs in zero-cell subgroups (no experiment-averse participants in one arm), where the log-binomial GLM produces a degenerate estimate of exp(-Inf) = 0 with a CI that collapses to [0, 0]. Risk differences remain identifiable in this situation and are reported when the identity-link model converges.",
+    locations = cells_column_labels(columns = c("rd", "rr"))
+  ) %>%
+  tab_footnote(
     footnote = "Two-sided tests of interaction terms in weighted generalized linear models, testing the null hypothesis of equality of treatment effects across subgroup levels. All estimates are presented with two-sided Wald-type 95% confidence intervals",
     locations = cells_body(rows=4, columns=6))
 
 
-gtsave(tableS2, here("results", "tableS2.html"))
+gtsave(tableS3, here("results", "tableS3.html"))
