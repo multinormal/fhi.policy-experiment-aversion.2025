@@ -66,7 +66,8 @@ raked_data_survey <- function(trimweights) {
   #Setting up the survey design without raked weights
   ds_treated_survey_design_unweighted <- svydesign(
     ids = ~ 1, # No clustering assumed
-    data = ds_treated
+    data = ds_treated,
+    weights = ~ 1
   )
   
   #Raking
@@ -122,7 +123,8 @@ raked_data_survey <- function(trimweights) {
   #Setting up the survey design without raked weights
   ds_untreated_survey_design_unweighted <- svydesign(
     ids = ~ 1, # No clustering assumed
-    data = ds_untreated
+    data = ds_untreated,
+    weights = ~ 1
   )
   
   #Raking

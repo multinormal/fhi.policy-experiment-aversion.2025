@@ -105,7 +105,7 @@ fun_table_1_row_subgroup <- function(var, lev) {
   eff_ss <- sum(w)^2 / sum(w^2)
   
   # Calculating the calibrated proportions and confidence interval
-  prop_ci <- svyciprop( ~ randomize_worst, survey_design_subgroup, method = "lo")
+  prop_ci <- suppressWarnings(svyciprop( ~ randomize_worst, survey_design_subgroup, method = "lo"))
   calibrated_prop <- round(as.vector(prop_ci) * 100, 1)
   lower_bound <- round(as.vector(attr(prop_ci, "ci")[1]) * 100, 1)
   upper_bound <- round(as.vector(attr(prop_ci, "ci")[2]) * 100, 1)

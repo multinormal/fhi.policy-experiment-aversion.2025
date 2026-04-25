@@ -128,17 +128,18 @@ clean_data <- function() {
   
   ds <- ds[, `:=`(randomize_worst_floor = if_else(agree_randomize == 1, 1, randomize_worst),
                   exprmnt_pref = if_else((agree_randomize > agree_imp) &
-                                                   (agree_randomize > agree_notimpl),
-                                                 1,
-                                                 0),
+                                           (agree_randomize > agree_notimpl),
+                                         1,
+                                         0),
                   just_diff_treatment_2= if_else(just_diff_treatment >= 4, 1, 0),
                   favours_impl = if_else(agree_imp >= 4, 1, 0),
                   favours_notimpl = if_else(agree_notimpl >= 4, 1, 0),
-                  favours_exprmnt = if_else(agree_randomize >= 4, 1, 0),
-                  edu_level=fcase(edu1 %in% c(1,2), 1, #Low education
-                                        edu1 %in% c(3), 2, #Middle education
-                                        edu1 %in% c(4,5), 3))] #High education
-
-
-  return(ds)
+                  favours_exprmnt = if_else(agree_randomize >= 4, 1, 0))]
+  
+  ds <- ds[, edu_level := fcase(
+    edu1 %in% c(1, 2), 1,
+    edu1 == 3,         2,
+    edu1 %in% c(4, 5), 3,
+    default = NA_real_
+  )]
 }

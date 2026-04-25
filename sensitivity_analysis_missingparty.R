@@ -72,7 +72,8 @@ sensitivty_analysis <- function() {
     #Create survey object
     nonraked <- svydesign(
       ids = ~ 1,
-      data = imputation
+      data = imputation,
+      weights = ~ 1
     )
     
     # Rake
@@ -83,9 +84,21 @@ sensitivty_analysis <- function() {
       population.margins = list(sex.pop, age.pop, edu1.pop, party2.pop)
     )
     
+    if (trim == T) {
+      raked_survey_trim <- trimWeights(raked_survey, 
+                                  lower=quantile(weights(raked_survey), c(.05)), 
+                                  upper=quantile(weights(raked_survey), c(.95)),
+                                  strict=TRUE)
+      raked_survey <- raked_survey_trim
+    }
+    
     #Calculate proportion with CI for one imputation
-    prop_ci <- svyciprop( ~ randomize_worst, raked_survey, method = "lo")
-    prop_ci_unweighted <- svyciprop( ~ randomize_worst, nonraked, method = "lo")
+    prop_ci <- suppressWarnings(
+      svyciprop(~ randomize_worst, raked_survey, method = "lo")
+    )
+    prop_ci_unweighted <- suppressWarnings(
+      svyciprop(~ randomize_worst, nonraked, method = "lo")
+    )
     
     #Effective sample size
     w <- weights(raked_survey)

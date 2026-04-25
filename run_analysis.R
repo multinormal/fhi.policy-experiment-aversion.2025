@@ -39,11 +39,11 @@ if (!dir.exists(here("results"))) {
   dir.create(here("results"))
 }
 
-######################## Main analysis (no weight trimming) ####################
+######################## Main analysis ####################
 
 # `trim` controls weight trimming in table1.R / table3.R. Set FALSE for the
 # main analysis; a second pass with trim=TRUE below produces the sensitivity
-# analysis (Tables S3A/S3B).
+# analysis (Tables S5/S6).
 trim <- FALSE
 
 # Table 1

@@ -419,5 +419,5 @@ table3 <-tbl3%>%
 if (trim ==F) {
   gtsave(table3, here("results", "table3.html"))
 } else {
-  gtsave(table3, here("results", "tableS35.html"))
+  gtsave(table3, here("results", "tableS5.html"))
 }
