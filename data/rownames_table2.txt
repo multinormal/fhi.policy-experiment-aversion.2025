@@ -1,9 +1,9 @@
 Gr
 All Participants
 <20 years
-20–35 years
-46–50 years
-51–70 years
+20-35 years
+36-50 years
+51-70 years
 >70 years
 Women
 Men
@@ -13,11 +13,11 @@ Upper secondary
 Vocational college
 University or university college
 Prefer not to answer or do not know
-Labor Party (Arbeiderpartiet)
-Conservative Party (Høyre)
-Progress Party (Fremskrittspartiet)
+Arbeiderpartiet (3.7)
+Høyre (6.6)
+Fremskrittspartiet (7.8)
 Other party
 Do not know
 Yes
-No  
+No
 Do not know
