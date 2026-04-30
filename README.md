@@ -4,10 +4,21 @@ Contact Ingeborg Hess Elgersma, inel@fhi.no for questions.
 
 The analysis was prespecified in http://dx.doi.org/10.2139/ssrn.5408584
 
+## How to run the analysis
+
+The analysis was developed using R version 4.4.0.
+
+1. Check out this repository to you local machine.
+2. Install the `remotes` package (version 2.5.0).
+3. Change the R working directory to that containing the repository.
+4. Run `source("run_analysis.R")`.
+
+Results tables will be saved to the directory `results`.
+
 ## Explanation R-scrips
 
-### start_here.R
-Installs the neccessary packages
+### run_analysis.R
+Installs the neccessary packages and runs the analysis
 
 ### data_cleaning.R
 Cleans datasets
@@ -29,3 +40,4 @@ Produces table 3 as prespecified in http://dx.doi.org/10.2139/ssrn.5408584
 
 
 ### sensitivity_analysis_missingparty.R
+Produces sensitivity analysis in table 1.

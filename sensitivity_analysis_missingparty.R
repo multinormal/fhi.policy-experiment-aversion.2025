@@ -12,8 +12,14 @@
 # Using the mice package
 library(mice)
 
-sensitivty_analysis <- function(formula, imputations, targets_list) {
-  source("data_cleaning.R")
+# In this sensitivity analysis we reanalyse the primary outcome, but instead of
+# assuming that missing party data reflects non-participation, we impute
+# party affiliation based on other non-missing variables
+
+sensitivty_analysis <- function() {
+  source(here("data_cleaning.R"))
+  
+  #Extract the cleaned dataset pre imputation
   ds <- clean_data()
   
   # Party
@@ -21,19 +27,22 @@ sensitivty_analysis <- function(formula, imputations, targets_list) {
   
   #Impute first and then compute weights
   ds_copy <- ds[treatment == 0]
-  ds_copy[, party2 := if_else(party2 == 11, NA, party2)]
+  ds_copy[, party2 := if_else(party2 == 11, NA, party2)] #Respondents who do not know what to vote
   ds_copy[, edu1 := if_else(edu1 == 6, NA, edu1)]
   ds_copy[, sex := if_else(sex == 4, 3, sex)]
   ds_copy <- ds_copy[, c("age", "sex", "edu1", "party2", "randomize_worst")]
+  
+  #Imputing
   imputations <- mice(
     ds_copy,
     m = 50,
-    printFlag = TRUE,
+    printFlag = F,
     maxit = 20,
     seed = 1234
   )
   
-  source("produce_target.R")
+  # Getting the population targets
+  source(here("produce_target.R"))
   targets_list <- produce_targets()
   
   #Looping through all imputations
@@ -63,7 +72,8 @@ sensitivty_analysis <- function(formula, imputations, targets_list) {
     #Create survey object
     nonraked <- svydesign(
       ids = ~ 1,
-      data = imputation
+      data = imputation,
+      weights = ~ 1
     )
     
     # Rake
@@ -74,9 +84,21 @@ sensitivty_analysis <- function(formula, imputations, targets_list) {
       population.margins = list(sex.pop, age.pop, edu1.pop, party2.pop)
     )
     
+    if (trim == T) {
+      raked_survey_trim <- trimWeights(raked_survey, 
+                                  lower=quantile(weights(raked_survey), c(.05)), 
+                                  upper=quantile(weights(raked_survey), c(.95)),
+                                  strict=TRUE)
+      raked_survey <- raked_survey_trim
+    }
+    
     #Calculate proportion with CI for one imputation
-    prop_ci <- svyciprop( ~ randomize_worst, raked_survey, method = "lo")
-    prop_ci_unweighted <- svyciprop( ~ randomize_worst, nonraked, method = "lo")
+    prop_ci <- suppressWarnings(
+      svyciprop(~ randomize_worst, raked_survey, method = "lo")
+    )
+    prop_ci_unweighted <- suppressWarnings(
+      svyciprop(~ randomize_worst, nonraked, method = "lo")
+    )
     
     #Effective sample size
     w <- weights(raked_survey)
